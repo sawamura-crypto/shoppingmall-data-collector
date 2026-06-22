@@ -47,7 +47,7 @@ COLUMN_INDEX = {
     "상품주문번호": 6,
 }
 
-st.set_page_config(page_title="에이블리 데이터 수집기", layout="wide")
+st.set_page_config(page_title="마켓인사이트", page_icon="📊", layout="wide")
 
 
 # ---------- 데이터 수집 관련 함수 (기존 스크래핑 로직 재사용) ----------
@@ -158,11 +158,14 @@ if "review_data" not in st.session_state:
     st.session_state.review_data = None
 
 
-st.title("📦 에이블리 파트너스 데이터 수집기")
+st.title("📊 마켓인사이트")
+st.caption("쇼핑몰 파트너스 데이터 수집·분석 도구")
 
 # --- 로그인 영역 ---
 with st.sidebar:
-    st.header("🔐 로그인")
+    st.markdown("## 📊 마켓인사이트")
+    st.divider()
+    st.header("🔐 에이블리 로그인")
 
     if not st.session_state.logged_in:
         ably_id_input = st.text_input("에이블리 ID (이메일)")
