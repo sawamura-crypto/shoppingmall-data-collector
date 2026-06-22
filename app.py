@@ -16,6 +16,8 @@ import subprocess
 import sys
 from playwright.sync_api import sync_playwright
 
+import auth
+
 
 @st.cache_resource
 def install_playwright_browser():
@@ -147,9 +149,11 @@ def collect_reviews(ably_id, ably_password, target_count, progress_callback=None
 
 # ---------- Streamlit 화면 구성 ----------
 
+auth.init_auth_session_state()
+
 # 세션 상태 초기화 (페이지를 새로고침해도 로그인 정보, 데이터가 유지되도록)
-if "logged_in" not in st.session_state:
-    st.session_state.logged_in = False
+if "ably_logged_in" not in st.session_state:
+    st.session_state.ably_logged_in = False
 if "ably_id" not in st.session_state:
     st.session_state.ably_id = ""
 if "ably_password" not in st.session_state:
@@ -158,90 +162,108 @@ if "review_data" not in st.session_state:
     st.session_state.review_data = None
 
 
-st.title("📊 마켓인사이트")
-st.caption("쇼핑몰 파트너스 데이터 수집·분석 도구")
+# --- 1단계: 마켓인사이트 자체 로그인 ---
+if not st.session_state.app_logged_in:
+    auth.render_login_page()
+    st.stop()  # 로그인 전에는 아래 코드가 실행되지 않도록 여기서 멈춤
 
-# --- 로그인 영역 ---
+
+# --- 로그인 후 공통 상단 영역 ---
 with st.sidebar:
     st.markdown("## 📊 마켓인사이트")
+    st.caption(f"{st.session_state.app_username}님 환영합니다")
     st.divider()
-    st.header("🔐 에이블리 로그인")
 
-    if not st.session_state.logged_in:
-        ably_id_input = st.text_input("에이블리 ID (이메일)")
-        ably_password_input = st.text_input("비밀번호", type="password")
-
-        if st.button("로그인 정보 저장", type="primary"):
-            if ably_id_input and ably_password_input:
-                st.session_state.ably_id = ably_id_input
-                st.session_state.ably_password = ably_password_input
-                st.session_state.logged_in = True
-                st.rerun()
-            else:
-                st.warning("ID와 비밀번호를 모두 입력해주세요.")
-    else:
-        st.success(f"로그인됨: {st.session_state.ably_id}")
-        if st.button("로그아웃"):
-            st.session_state.logged_in = False
+    if st.session_state.ably_logged_in:
+        st.success(f"에이블리 연결됨: {st.session_state.ably_id}")
+        if st.button("에이블리 연결 해제"):
+            st.session_state.ably_logged_in = False
             st.session_state.ably_id = ""
             st.session_state.ably_password = ""
             st.session_state.review_data = None
             st.rerun()
 
+    st.divider()
+    if st.button("로그아웃"):
+        auth.logout()
+        st.rerun()
 
-# --- 메인 영역 ---
-if not st.session_state.logged_in:
-    st.info("왼쪽 사이드바에서 먼저 로그인 정보를 입력해주세요.")
-else:
-    st.subheader("📋 가져올 데이터 종류 선택")
 
-    data_type = st.selectbox(
-        "데이터 종류",
-        ["리뷰"],  # 추후 여기에 "매출", "주문" 등 추가 가능
-    )
+st.title("📊 마켓인사이트")
+st.caption("쇼핑몰 파트너스 데이터 수집·분석 도구")
 
-    if data_type == "리뷰":
-        col1, col2 = st.columns([3, 1])
-        with col1:
-            target_count = st.number_input(
-                "수집할 리뷰 개수", min_value=1, max_value=10000, value=100, step=10
-            )
-        with col2:
-            st.write("")  # 버튼 위치 맞추기용 여백
-            st.write("")
-            collect_btn = st.button("리뷰 수집 시작", type="primary")
 
-        if collect_btn:
-            progress_bar = st.progress(0, text="수집 준비 중...")
+# --- 2단계: 에이블리 계정 연결 ---
+if not st.session_state.ably_logged_in:
+    st.subheader("🔗 에이블리 계정 연결")
+    st.write("데이터를 가져올 에이블리 파트너스 계정을 연결해주세요.")
 
-            def update_progress(current):
-                pct = min(current / target_count, 1.0)
-                progress_bar.progress(pct, text=f"수집 중... ({current}/{target_count})")
+    _, center_col, _ = st.columns([1, 1.2, 1])
+    with center_col:
+        ably_id_input = st.text_input("에이블리 ID (이메일)")
+        ably_password_input = st.text_input("에이블리 비밀번호", type="password")
 
-            with st.spinner("에이블리 어드민에 접속하여 데이터를 가져오는 중입니다..."):
-                try:
-                    results = collect_reviews(
-                        st.session_state.ably_id,
-                        st.session_state.ably_password,
-                        int(target_count),
-                        progress_callback=update_progress,
-                    )
-                    st.session_state.review_data = pd.DataFrame(results)
-                    progress_bar.progress(1.0, text="수집 완료!")
-                    st.success(f"{len(results)}개의 리뷰를 수집했습니다.")
-                except Exception as e:
-                    st.error(f"수집 중 오류가 발생했습니다: {e}")
+        if st.button("연결하기", type="primary", use_container_width=True):
+            if ably_id_input and ably_password_input:
+                st.session_state.ably_id = ably_id_input
+                st.session_state.ably_password = ably_password_input
+                st.session_state.ably_logged_in = True
+                st.rerun()
+            else:
+                st.warning("ID와 비밀번호를 모두 입력해주세요.")
+    st.stop()
 
-    # --- 결과 표시 영역 ---
-    if st.session_state.review_data is not None:
-        st.subheader("📊 수집된 리뷰 데이터")
-        st.dataframe(st.session_state.review_data, use_container_width=True)
 
-        # 원하면 엑셀로도 다운로드 가능하게 (강제 저장이 아니라 선택적 다운로드)
-        csv = st.session_state.review_data.to_csv(index=False).encode("utf-8-sig")
-        st.download_button(
-            label="CSV로 다운로드",
-            data=csv,
-            file_name="ably_reviews.csv",
-            mime="text/csv",
+# --- 3단계: 데이터 수집 및 표시 ---
+st.subheader("📋 가져올 데이터 종류 선택")
+
+data_type = st.selectbox(
+    "데이터 종류",
+    ["리뷰"],  # 추후 여기에 "매출", "주문" 등 추가 가능
+)
+
+if data_type == "리뷰":
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        target_count = st.number_input(
+            "수집할 리뷰 개수", min_value=1, max_value=10000, value=100, step=10
         )
+    with col2:
+        st.write("")  # 버튼 위치 맞추기용 여백
+        st.write("")
+        collect_btn = st.button("리뷰 수집 시작", type="primary")
+
+    if collect_btn:
+        progress_bar = st.progress(0, text="수집 준비 중...")
+
+        def update_progress(current):
+            pct = min(current / target_count, 1.0)
+            progress_bar.progress(pct, text=f"수집 중... ({current}/{target_count})")
+
+        with st.spinner("에이블리 어드민에 접속하여 데이터를 가져오는 중입니다..."):
+            try:
+                results = collect_reviews(
+                    st.session_state.ably_id,
+                    st.session_state.ably_password,
+                    int(target_count),
+                    progress_callback=update_progress,
+                )
+                st.session_state.review_data = pd.DataFrame(results)
+                progress_bar.progress(1.0, text="수집 완료!")
+                st.success(f"{len(results)}개의 리뷰를 수집했습니다.")
+            except Exception as e:
+                st.error(f"수집 중 오류가 발생했습니다: {e}")
+
+# --- 결과 표시 영역 ---
+if st.session_state.review_data is not None:
+    st.subheader("📊 수집된 리뷰 데이터")
+    st.dataframe(st.session_state.review_data, use_container_width=True)
+
+    # 원하면 엑셀로도 다운로드 가능하게 (강제 저장이 아니라 선택적 다운로드)
+    csv = st.session_state.review_data.to_csv(index=False).encode("utf-8-sig")
+    st.download_button(
+        label="CSV로 다운로드",
+        data=csv,
+        file_name="ably_reviews.csv",
+        mime="text/csv",
+    )
