@@ -12,7 +12,28 @@
 
 import streamlit as st
 import pandas as pd
+import subprocess
+import sys
 from playwright.sync_api import sync_playwright
+
+
+@st.cache_resource
+def install_playwright_browser():
+    """Streamlit Cloud 서버에는 Chromium 브라우저가 미리 설치되어 있지 않으므로,
+    앱이 처음 켜질 때 한 번만 자동으로 설치합니다."""
+    try:
+        subprocess.run(
+            [sys.executable, "-m", "playwright", "install", "chromium"],
+            check=True,
+            capture_output=True,
+        )
+        return True
+    except Exception as e:
+        st.error(f"브라우저 설치 중 오류: {e}")
+        return False
+
+
+install_playwright_browser()
 
 # 실제 데이터 행에서 확인된 칸 순서 (0번부터):
 # [0] 상품번호, [1] 대표이미지(텍스트 없음, 사용 안 함), [2] 상품명,
