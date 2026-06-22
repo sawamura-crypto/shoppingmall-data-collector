@@ -58,7 +58,7 @@ st.set_page_config(page_title="마켓인사이트", page_icon="📊", layout="wi
 
 
 def run_collection(platform_module, user_id, password, mode, target_count=None,
-                    start_date=None, end_date=None, progress_callback=None):
+                    start_date=None, end_date=None, progress_callback=None, debug_log=None):
     """선택된 플랫폼 모듈을 이용해 실제 수집을 수행하는 공통 함수.
     mode는 'count' 또는 'date'."""
     with sync_playwright() as playwright:
@@ -66,15 +66,15 @@ def run_collection(platform_module, user_id, password, mode, target_count=None,
         context = browser.new_context()
         page = context.new_page()
 
-        platform_module.login(page, user_id, password)
+        platform_module.login(page, user_id, password, debug_log=debug_log)
 
         if mode == "count":
             results = platform_module.collect_reviews_by_count(
-                page, target_count, progress_callback=progress_callback
+                page, target_count, progress_callback=progress_callback, debug_log=debug_log
             )
         else:
             results = platform_module.collect_reviews_by_date(
-                page, start_date, end_date, progress_callback=progress_callback
+                page, start_date, end_date, progress_callback=progress_callback, debug_log=debug_log
             )
 
         context.close()
@@ -227,6 +227,8 @@ if data_type == "리뷰":
                 progress_bar.progress(0.5, text=f"수집 중... (현재까지 {current}개)")
 
         with st.spinner("쇼핑몰 어드민에 접속하여 데이터를 가져오는 중입니다..."):
+            debug_log = []
+            results = []
             try:
                 results = run_collection(
                     platform_module,
@@ -237,12 +239,19 @@ if data_type == "리뷰":
                     start_date=start_date,
                     end_date=end_date,
                     progress_callback=update_progress,
+                    debug_log=debug_log,
                 )
                 st.session_state.review_data = pd.DataFrame(results)
                 progress_bar.progress(1.0, text="수집 완료!")
                 st.success(f"{len(results)}개의 리뷰를 수집했습니다.")
             except Exception as e:
+                debug_log.append(f"예외 발생: {e}")
                 st.error(f"수집 중 오류가 발생했습니다: {e}")
+
+            if debug_log:
+                with st.expander("🔍 진단 로그 (문제 발생 시 참고)", expanded=(len(results) == 0)):
+                    for line in debug_log:
+                        st.text(line)
 
 
 # --- 결과 표시 영역 ---

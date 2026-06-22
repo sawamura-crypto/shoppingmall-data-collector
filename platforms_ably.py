@@ -23,7 +23,7 @@ COLUMN_INDEX = {
 }
 
 
-def login(page, user_id: str, password: str):
+def login(page, user_id: str, password: str, debug_log=None):
     page.goto("https://my.a-bly.com/login/")
     page.get_by_role("textbox", name="이메일").click()
     page.get_by_role("textbox", name="이메일").fill(user_id)
@@ -32,17 +32,32 @@ def login(page, user_id: str, password: str):
     page.get_by_role("button", name="로그인").click()
     page.wait_for_timeout(4000)
 
+    if debug_log is not None:
+        debug_log.append(f"로그인 후 URL: {page.url}")
+        # 로그인 실패 시 보통 URL에 'login'이 그대로 남아있음
+        if "login" in page.url:
+            debug_log.append("⚠️ 경고: 로그인 후에도 login 페이지에 머물러 있습니다. 로그인 실패 가능성.")
 
-def _go_to_reviews_and_set_page_size(page, page_size=100):
+
+def _go_to_reviews_and_set_page_size(page, page_size=100, debug_log=None):
     page.goto("https://my.a-bly.com/reviews")
     page.wait_for_timeout(3000)
+
+    if debug_log is not None:
+        debug_log.append(f"리뷰 페이지 이동 후 URL: {page.url}")
+        row_count_check = page.locator(".el-table__body tbody tr.el-table__row").count()
+        debug_log.append(f"100개씩 보기 설정 전, 감지된 행 개수: {row_count_check}")
+
     try:
         page.get_by_role("textbox", name="선택").click()
         page.wait_for_timeout(500)
         page.get_by_text(f"{page_size}개씩 보기").click()
         page.wait_for_timeout(1500)
-    except Exception:
-        pass
+        if debug_log is not None:
+            debug_log.append(f"{page_size}개씩 보기 설정 성공")
+    except Exception as e:
+        if debug_log is not None:
+            debug_log.append(f"{page_size}개씩 보기 설정 실패: {e}")
 
 
 def _apply_date_filter(page, start_date: str, end_date: str):
@@ -106,13 +121,15 @@ def _go_to_next_page(page):
         return False
 
 
-def collect_reviews_by_count(page, target_count: int, progress_callback=None):
+def collect_reviews_by_count(page, target_count: int, progress_callback=None, debug_log=None):
     """개수를 기준으로 리뷰를 수집합니다 (최신순으로 target_count개)."""
-    _go_to_reviews_and_set_page_size(page, page_size=100)
+    _go_to_reviews_and_set_page_size(page, page_size=100, debug_log=debug_log)
 
     all_results = []
     while len(all_results) < target_count:
         page_data = _extract_rows_from_current_page(page)
+        if debug_log is not None and len(all_results) == 0:
+            debug_log.append(f"첫 페이지 추출 결과: {len(page_data)}건")
         if not page_data:
             break
 
@@ -130,11 +147,11 @@ def collect_reviews_by_count(page, target_count: int, progress_callback=None):
     return all_results[:target_count]
 
 
-def collect_reviews_by_date(page, start_date: str, end_date: str, progress_callback=None):
+def collect_reviews_by_date(page, start_date: str, end_date: str, progress_callback=None, debug_log=None):
     """날짜 범위를 기준으로 해당 기간의 리뷰를 전부 수집합니다.
     start_date, end_date 형식: "YYYY-MM-DD"
     """
-    _go_to_reviews_and_set_page_size(page, page_size=100)
+    _go_to_reviews_and_set_page_size(page, page_size=100, debug_log=debug_log)
     _apply_date_filter(page, start_date, end_date)
 
     all_results = []
