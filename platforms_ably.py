@@ -34,9 +34,23 @@ def login(page, user_id: str, password: str, debug_log=None):
 
     if debug_log is not None:
         debug_log.append(f"로그인 후 URL: {page.url}")
-        # 로그인 실패 시 보통 URL에 'login'이 그대로 남아있음
         if "login" in page.url:
             debug_log.append("⚠️ 경고: 로그인 후에도 login 페이지에 머물러 있습니다. 로그인 실패 가능성.")
+            # 화면에 어떤 에러 메시지가 있는지 텍스트로 긁어서 기록
+            try:
+                body_text = page.locator("body").inner_text()
+                # 너무 길면 앞부분만
+                debug_log.append(f"화면 텍스트(일부): {body_text[:500]}")
+            except Exception as e:
+                debug_log.append(f"화면 텍스트 읽기 실패: {e}")
+
+            # 스크린샷을 base64로 저장 (app.py에서 이미지로 보여줄 수 있도록)
+            try:
+                screenshot_bytes = page.screenshot()
+                import base64
+                debug_log.append(f"SCREENSHOT_BASE64:{base64.b64encode(screenshot_bytes).decode('utf-8')}")
+            except Exception as e:
+                debug_log.append(f"스크린샷 캡처 실패: {e}")
 
 
 def _go_to_reviews_and_set_page_size(page, page_size=100, debug_log=None):

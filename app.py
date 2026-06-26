@@ -250,8 +250,13 @@ if data_type == "리뷰":
 
             if debug_log:
                 with st.expander("🔍 진단 로그 (문제 발생 시 참고)", expanded=(len(results) == 0)):
+                    import base64
                     for line in debug_log:
-                        st.text(line)
+                        if line.startswith("SCREENSHOT_BASE64:"):
+                            img_bytes = base64.b64decode(line.replace("SCREENSHOT_BASE64:", ""))
+                            st.image(img_bytes, caption="로그인 시도 시점의 화면", use_container_width=True)
+                        else:
+                            st.text(line)
 
 
 # --- 결과 표시 영역 ---
