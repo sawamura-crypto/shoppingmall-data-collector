@@ -57,26 +57,27 @@ def render_login_page():
     st.title("📊 마켓인사이트")
     st.caption("쇼핑몰 파트너스 데이터 수집·분석 도구")
 
-    st.divider()
+    st.write("")
 
     _, center_col, _ = st.columns([1, 1.2, 1])
     with center_col:
-        st.subheader("🔐 로그인")
+        with st.container(border=True):
+            st.subheader("🔐 로그인")
 
-        username = st.text_input("아이디")
-        password = st.text_input("비밀번호", type="password")
+            username = st.text_input("아이디")
+            password = st.text_input("비밀번호", type="password")
 
-        if st.button("로그인", type="primary", use_container_width=True):
-            if not username or not password:
-                st.warning("아이디와 비밀번호를 모두 입력해주세요.")
-            elif authenticate(username, password):
-                st.session_state.app_logged_in = True
-                st.session_state.app_username = username
-                st.rerun()
-            else:
-                st.error("아이디 또는 비밀번호가 올바르지 않습니다.")
+            if st.button("로그인", type="primary", use_container_width=True):
+                if not username or not password:
+                    st.warning("아이디와 비밀번호를 모두 입력해주세요.")
+                elif authenticate(username, password):
+                    st.session_state.app_logged_in = True
+                    st.session_state.app_username = username
+                    st.rerun()
+                else:
+                    st.error("아이디 또는 비밀번호가 올바르지 않습니다.")
 
-        st.caption("※ 현재는 관리자 전용 베타 버전입니다. 회원가입은 추후 지원될 예정입니다.")
+            st.caption("※ 현재는 관리자 전용 베타 버전입니다. 회원가입은 추후 지원될 예정입니다.")
 
     return st.session_state.app_logged_in
 
