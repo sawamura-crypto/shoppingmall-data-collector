@@ -25,18 +25,30 @@ COLUMN_INDEX = {
 
 def login(page, user_id: str, password: str, debug_log=None):
     page.goto("https://my.a-bly.com/login/")
-    page.wait_for_timeout(2000)
+    page.wait_for_load_state("load")
+    page.wait_for_timeout(3000)
 
     if debug_log is not None:
         debug_log.append(f"로그인 페이지 첫 진입 URL: {page.url}")
 
     try:
-        page.get_by_role("textbox", name="이메일").click()
-        page.get_by_role("textbox", name="이메일").fill(user_id)
-        page.get_by_role("textbox", name="비밀번호").click()
-        page.get_by_role("textbox", name="비밀번호").fill(password)
+        email_box = page.get_by_role("textbox", name="이메일")
+        email_box.click()
+        email_box.fill(user_id)
+        page.wait_for_timeout(500)
+
+        password_box = page.get_by_role("textbox", name="비밀번호")
+        password_box.click()
+        password_box.fill(password)
+        page.wait_for_timeout(500)
+
+        # 실제로 입력이 됐는지 확인
+        email_value = email_box.input_value()
+        password_value = password_box.input_value()
         if debug_log is not None:
-            debug_log.append("ID/비밀번호 입력 완료")
+            debug_log.append(
+                f"입력 확인 - 이메일 칸 글자수: {len(email_value)}, 비밀번호 칸 글자수: {len(password_value)}"
+            )
     except Exception as e:
         if debug_log is not None:
             debug_log.append(f"ID/비밀번호 입력 단계에서 오류: {e}")
@@ -65,7 +77,8 @@ def login(page, user_id: str, password: str, debug_log=None):
                 debug_log.append(f"화면 텍스트 읽기 실패: {e}")
 
             try:
-                screenshot_bytes = page.screenshot()
+                page.wait_for_timeout(2000)  # 폰트/렌더링이 완전히 끝날 시간을 추가로 확보
+                screenshot_bytes = page.screenshot(full_page=True)
                 debug_log.append(f"스크린샷 크기: {len(screenshot_bytes)} bytes")
                 import base64
                 debug_log.append(f"SCREENSHOT_BASE64:{base64.b64encode(screenshot_bytes).decode('utf-8')}")
