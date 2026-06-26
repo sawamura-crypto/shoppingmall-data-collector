@@ -25,28 +25,48 @@ COLUMN_INDEX = {
 
 def login(page, user_id: str, password: str, debug_log=None):
     page.goto("https://my.a-bly.com/login/")
-    page.get_by_role("textbox", name="이메일").click()
-    page.get_by_role("textbox", name="이메일").fill(user_id)
-    page.get_by_role("textbox", name="비밀번호").click()
-    page.get_by_role("textbox", name="비밀번호").fill(password)
-    page.get_by_role("button", name="로그인").click()
-    page.wait_for_timeout(4000)
+    page.wait_for_timeout(2000)
+
+    if debug_log is not None:
+        debug_log.append(f"로그인 페이지 첫 진입 URL: {page.url}")
+
+    try:
+        page.get_by_role("textbox", name="이메일").click()
+        page.get_by_role("textbox", name="이메일").fill(user_id)
+        page.get_by_role("textbox", name="비밀번호").click()
+        page.get_by_role("textbox", name="비밀번호").fill(password)
+        if debug_log is not None:
+            debug_log.append("ID/비밀번호 입력 완료")
+    except Exception as e:
+        if debug_log is not None:
+            debug_log.append(f"ID/비밀번호 입력 단계에서 오류: {e}")
+
+    try:
+        page.get_by_role("button", name="로그인").click()
+        if debug_log is not None:
+            debug_log.append("로그인 버튼 클릭 완료")
+    except Exception as e:
+        if debug_log is not None:
+            debug_log.append(f"로그인 버튼 클릭 오류: {e}")
+
+    # 클라우드 환경은 네트워크가 느릴 수 있어 대기시간을 늘림
+    page.wait_for_timeout(6000)
 
     if debug_log is not None:
         debug_log.append(f"로그인 후 URL: {page.url}")
         if "login" in page.url:
             debug_log.append("⚠️ 경고: 로그인 후에도 login 페이지에 머물러 있습니다. 로그인 실패 가능성.")
-            # 화면에 어떤 에러 메시지가 있는지 텍스트로 긁어서 기록
+
             try:
                 body_text = page.locator("body").inner_text()
-                # 너무 길면 앞부분만
-                debug_log.append(f"화면 텍스트(일부): {body_text[:500]}")
+                debug_log.append(f"화면 텍스트 길이: {len(body_text)}자")
+                debug_log.append(f"화면 텍스트(일부): {body_text[:500]!r}")
             except Exception as e:
                 debug_log.append(f"화면 텍스트 읽기 실패: {e}")
 
-            # 스크린샷을 base64로 저장 (app.py에서 이미지로 보여줄 수 있도록)
             try:
                 screenshot_bytes = page.screenshot()
+                debug_log.append(f"스크린샷 크기: {len(screenshot_bytes)} bytes")
                 import base64
                 debug_log.append(f"SCREENSHOT_BASE64:{base64.b64encode(screenshot_bytes).decode('utf-8')}")
             except Exception as e:
