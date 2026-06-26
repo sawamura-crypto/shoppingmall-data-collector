@@ -62,8 +62,18 @@ def run_collection(platform_module, user_id, password, mode, target_count=None,
     """선택된 플랫폼 모듈을 이용해 실제 수집을 수행하는 공통 함수.
     mode는 'count' 또는 'date'."""
     with sync_playwright() as playwright:
-        browser = playwright.chromium.launch(headless=True)
-        context = browser.new_context()
+        browser = playwright.chromium.launch(
+            headless=True,
+            args=["--disable-blink-features=AutomationControlled"],
+        )
+        context = browser.new_context(
+            user_agent=(
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+            ),
+            viewport={"width": 1280, "height": 900},
+            locale="ko-KR",
+        )
         page = context.new_page()
 
         platform_module.login(page, user_id, password, debug_log=debug_log)
