@@ -8,9 +8,11 @@
 """
 
 
-def classify_review(text: str, positive_keywords: list, negative_keywords: list) -> str:
+def classify_review(text, positive_keywords: list, negative_keywords: list) -> str:
     """리뷰 텍스트 하나를 '긍정' / '부정' / '중립' 중 하나로 분류합니다."""
-    if not text:
+    # 리뷰가 빈 칸인 경우 pandas가 NaN(float)으로 읽어들이는 경우가 있어서,
+    # 문자열이 아니면 빈 문자열로 처리합니다.
+    if not isinstance(text, str) or not text:
         return "중립"
 
     has_positive = any(keyword.strip() in text for keyword in positive_keywords if keyword.strip())
