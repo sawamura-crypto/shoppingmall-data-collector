@@ -30,19 +30,33 @@ def login(page, user_id: str, password: str, debug_log=None):
 
     if debug_log is not None:
         debug_log.append(f"로그인 페이지 첫 진입 URL: {page.url}")
+        input_count = page.locator("input").count()
+        debug_log.append(f"페이지 내 input 태그 개수: {input_count}")
+        for i in range(input_count):
+            try:
+                inp = page.locator("input").nth(i)
+                itype = inp.get_attribute("type")
+                iname = inp.get_attribute("name")
+                iplaceholder = inp.get_attribute("placeholder")
+                debug_log.append(f"  input[{i}] type={itype}, name={iname}, placeholder={iplaceholder}")
+            except Exception as e:
+                debug_log.append(f"  input[{i}] 속성 확인 실패: {e}")
 
     try:
-        email_box = page.get_by_role("textbox", name="이메일")
+        # placeholder 텍스트(이메일/비밀번호) 의존 대신, DOM 순서로 입력칸을 지정
+        # (클라우드 환경에서 접근성 이름이 다르게 인식되는 문제를 회피하기 위함)
+        inputs = page.locator("input")
+        email_box = inputs.nth(0)
+        password_box = inputs.nth(1)
+
         email_box.click()
         email_box.fill(user_id)
         page.wait_for_timeout(500)
 
-        password_box = page.get_by_role("textbox", name="비밀번호")
         password_box.click()
         password_box.fill(password)
         page.wait_for_timeout(500)
 
-        # 실제로 입력이 됐는지 확인
         email_value = email_box.input_value()
         password_value = password_box.input_value()
         if debug_log is not None:
@@ -54,7 +68,13 @@ def login(page, user_id: str, password: str, debug_log=None):
             debug_log.append(f"ID/비밀번호 입력 단계에서 오류: {e}")
 
     try:
-        page.get_by_role("button", name="로그인").click()
+        buttons = page.locator("button")
+        button_count = buttons.count()
+        if debug_log is not None:
+            debug_log.append(f"페이지 내 button 태그 개수: {button_count}")
+        # "로그인" 텍스트를 가진 버튼을 직접 찾아서 클릭
+        login_button = page.locator("button", has_text="로그인").first
+        login_button.click()
         if debug_log is not None:
             debug_log.append("로그인 버튼 클릭 완료")
     except Exception as e:
