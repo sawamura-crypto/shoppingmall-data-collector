@@ -44,17 +44,18 @@ def login(page, user_id: str, password: str, debug_log=None):
 
     try:
         # placeholder 텍스트(이메일/비밀번호) 의존 대신, DOM 순서로 입력칸을 지정
-        # (클라우드 환경에서 접근성 이름이 다르게 인식되는 문제를 회피하기 위함)
         inputs = page.locator("input")
         email_box = inputs.nth(0)
         password_box = inputs.nth(1)
 
+        # fill()이 React 등의 컨트롤드 인풋에서 값이 반영되지 않는 문제가 있어서,
+        # 실제 키보드 입력처럼 한 글자씩 타이핑하는 방식으로 변경
         email_box.click()
-        email_box.fill(user_id)
+        email_box.press_sequentially(user_id, delay=50)
         page.wait_for_timeout(500)
 
         password_box.click()
-        password_box.fill(password)
+        password_box.press_sequentially(password, delay=50)
         page.wait_for_timeout(500)
 
         email_value = email_box.input_value()
