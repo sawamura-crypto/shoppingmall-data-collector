@@ -1,4 +1,4 @@
 streamlit
 pandas
-playwright
 bcrypt
+openpyxl
